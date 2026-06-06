@@ -1,0 +1,37 @@
+{
+  "name": "aurelia-skills",
+  "version": "0.1.0",
+  "description": "Aurelia application development skills for Codex and compatible agents.",
+  "author": {
+    "name": "Aurelia",
+    "url": "https://aurelia.io/"
+  },
+  "homepage": "https://github.com/aurelia/skills",
+  "repository": "https://github.com/aurelia/skills",
+  "license": "MIT",
+  "keywords": [
+    "aurelia",
+    "aurelia2",
+    "skills",
+    "codex",
+    "claude-code"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Aurelia Skills",
+    "shortDescription": "Build and maintain Aurelia apps",
+    "longDescription": "Use Aurelia Skills for scaffolding, debugging, reviewing, and extending Aurelia applications, including Aurelia 2 templates, routing, DI, testing, SSR, and prerendering guidance.",
+    "developerName": "Aurelia",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://aurelia.io/",
+    "defaultPrompt": [
+      "Use Aurelia Skills to scaffold, debug, or review an Aurelia 2 app"
+    ],
+    "brandColor": "#ED2B88",
+    "screenshots": []
+  }
+}

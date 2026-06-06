@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "aurelia-skills",
+  "description": "Aurelia agent skills for Claude Code.",
+  "owner": {
+    "name": "Aurelia"
+  },
+  "plugins": [
+    {
+      "name": "aurelia-skills",
+      "description": "Aurelia application development skills for Claude Code and compatible agents.",
+      "author": {
+        "name": "Aurelia"
+      },
+      "category": "development",
+      "source": ".",
+      "homepage": "https://github.com/aurelia/skills"
+    }
+  ]
+}

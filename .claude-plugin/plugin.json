@@ -1,0 +1,19 @@
+{
+  "name": "aurelia-skills",
+  "version": "0.1.0",
+  "description": "Aurelia application development skills for Claude Code and compatible agents.",
+  "author": {
+    "name": "Aurelia",
+    "url": "https://aurelia.io/"
+  },
+  "homepage": "https://github.com/aurelia/skills",
+  "repository": "https://github.com/aurelia/skills",
+  "license": "MIT",
+  "keywords": [
+    "aurelia",
+    "aurelia2",
+    "skills",
+    "codex",
+    "claude-code"
+  ]
+}
