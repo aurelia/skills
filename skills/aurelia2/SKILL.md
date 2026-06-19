@@ -1,6 +1,7 @@
 ---
 name: aurelia2
-description: Create new and work with existing Aurelia 2 applications. Use this skill when scaffolding a new Aurelia 2 project, creating components/routes, writing Aurelia 2 code, debugging, adding SSR/prerendering, refactoring, or reviewing existing Aurelia 2 codebases. Covers project setup with Vite, Tailwind CSS v4, Vitest, Playwright, Storybook, SSR, the first-party plugins (HTTP/fetch-client, validation, dialog, state, i18n), and best practices for templates, routing, DI, observation, and testing.
+description: Create new and work with existing Aurelia 2 applications. Use this skill when scaffolding a new Aurelia 2 project, creating components/routes, writing Aurelia 2 code, debugging, adding SSR/prerendering, migrating an Aurelia 1 app to Aurelia 2, refactoring, or reviewing existing Aurelia 2 codebases. Covers project setup with Vite, Tailwind CSS v4, Vitest, Playwright, Storybook, SSR, the first-party plugins (HTTP/fetch-client, validation, dialog, state, i18n), Aurelia 1-to-2 migration, and best practices for templates, routing, DI, observation, and testing.
+argument-hint: "[new <project-name> | component <name> | route <name>]"
 ---
 
 # Aurelia 2 Application Skill
