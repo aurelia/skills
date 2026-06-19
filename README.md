@@ -4,7 +4,7 @@ Agent skills for building and maintaining Aurelia applications.
 
 This repository currently ships one skill:
 
-- `skills/aurelia2` - Aurelia 2 application development, scaffolding, routing, dependency injection, templates, testing, SSR, prerendering, and review guidance.
+- `skills/aurelia2` - Aurelia 2 application development, scaffolding, routing, dependency injection, templates, testing, SSR, prerendering, the first-party plugins (HTTP/fetch-client, validation, dialog, state, i18n), and review guidance.
 
 The `skills/aurelia2` folder is the canonical skill. The root plugin manifests are packaging only, so Claude Code, Codex, and other compatible agents can discover the same skill without duplicate copies.
 

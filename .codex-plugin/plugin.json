@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Aurelia Skills",
     "shortDescription": "Build and maintain Aurelia apps",
-    "longDescription": "Use Aurelia Skills for scaffolding, debugging, reviewing, and extending Aurelia applications, including Aurelia 2 templates, routing, DI, testing, SSR, and prerendering guidance.",
+    "longDescription": "Use Aurelia Skills for scaffolding, debugging, reviewing, and extending Aurelia applications, including Aurelia 2 templates, routing, DI, testing, SSR, prerendering, and the first-party plugins (HTTP/fetch-client, validation, dialog, state, and i18n).",
     "developerName": "Aurelia",
     "category": "Developer Tools",
     "capabilities": [

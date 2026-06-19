@@ -1,6 +1,6 @@
 ---
 name: aurelia2
-description: Create new and work with existing Aurelia 2 applications. Use this skill when scaffolding a new Aurelia 2 project, creating components/routes, writing Aurelia 2 code, debugging, adding SSR/prerendering, refactoring, or reviewing existing Aurelia 2 codebases. Covers project setup with Vite, Tailwind CSS v4, Vitest, Playwright, Storybook, SSR, and best practices for templates, routing, DI, observation, and testing.
+description: Create new and work with existing Aurelia 2 applications. Use this skill when scaffolding a new Aurelia 2 project, creating components/routes, writing Aurelia 2 code, debugging, adding SSR/prerendering, refactoring, or reviewing existing Aurelia 2 codebases. Covers project setup with Vite, Tailwind CSS v4, Vitest, Playwright, Storybook, SSR, the first-party plugins (HTTP/fetch-client, validation, dialog, state, i18n), and best practices for templates, routing, DI, observation, and testing.
 ---
 
 # Aurelia 2 Application Skill
@@ -120,6 +120,8 @@ npx makes aurelia <project-name> -s tailwindcss,vitest,playwright,storybook,app-
 ```
 
 This will scaffold a new Aurelia 2 project with Tailwind, Vitest, Vite for the Bundler, Playwright for e2e testing, Storybook and an example app with routing (to show how routing works). The app will be a starting point to build on, but clean up any demo data prior.
+
+`-s` takes any **subset** of features (comma-separated, no spaces); unspecified groups fall back to defaults (a Vite + TypeScript app). For the full list of feature flags, the choice groups, conditional rules (e.g. `vitest` needs `vite`), and more example commands, read `references/cli.md`.
 
 Do not blindly use the full scaffold. If the app does not need routing, Storybook, Playwright, or Tailwind, omit them.
 
@@ -431,7 +433,7 @@ export class MyComponent {
 Routed components can implement `IRouteViewModel` for route-specific lifecycle hooks. These are separate from component lifecycles:
 
 ```typescript
-import { IRouteViewModel, Params, RouteNode } from '@aurelia/router';
+import { IRouteViewModel, Params, RouteNode, INavigationOptions } from '@aurelia/router';
 
 export class ProductDetail implements IRouteViewModel {
   product: any;
@@ -452,7 +454,7 @@ export class ProductDetail implements IRouteViewModel {
 
   // Runs after the component is fully loaded and activated. Good for analytics,
   // scroll restoration, or post-load side effects.
-  loaded(params: Params) {
+  loaded(params: Params, next: RouteNode, current: RouteNode | null) {
     analytics.track('page_view', { page: 'product', id: params.id });
     window.scrollTo(0, 0);
   }
@@ -471,6 +473,8 @@ export class ProductDetail implements IRouteViewModel {
   }
 }
 ```
+
+**Full hook signatures:** every route hook receives a trailing `options: INavigationOptions` argument after the parameters shown above (`canLoad(params, next, current, options)`, `loading(params, next, current, options)`, `loaded(params, next, current, options)`, `canUnload(next, current, options)`, `unloading(next, current, options)`). Declare only the parameters you actually use — TypeScript allows implementing a hook with fewer parameters.
 
 **Route lifecycle order:** `canLoad` -> `loading` -> `loaded` -> (user navigates away) -> `canUnload` -> `unloading`
 
@@ -1094,6 +1098,28 @@ Usage:
 <button tooltip="Click to save">Save</button>
 <button tooltip.bind="dynamicTooltip">Dynamic</button>
 ```
+
+## Additional Packages (HTTP, Validation, Dialogs, State, i18n)
+
+Aurelia ships first-party plugins for common app needs. Each has a focused reference file — read
+the relevant one before writing code against that package, and only add a package when the app
+actually needs it. Register configurations in `main.ts` (see Application Bootstrap).
+
+- **HTTP requests** → `references/fetch-client.md`. `@aurelia/fetch-client` (`IHttpClient`) is the
+  standard HTTP client and ships **inside the `aurelia` meta-package** (no extra install).
+  Covers DI, `configure()`, interceptors (auth/error), retry, caching, and cancellation.
+- **Form/model validation** → `references/validation.md`. `@aurelia/validation` +
+  `@aurelia/validation-html`: the fluent rule API, `IValidationController`
+  (`newInstanceForScope`), the `& validate` binding behavior, and error display.
+- **Modals/dialogs** → `references/dialog.md`. `@aurelia/dialog`: `IDialogService.open()`,
+  `DialogConfigurationStandard`, the dialog component contract (`activate`, `IDialogController`,
+  `ok`/`cancel`/`error`), and reading the close result.
+- **Shared state (Redux-style)** → `references/state.md`. `@aurelia/state`:
+  `StateDefaultConfiguration.init`, action handlers, the `.state`/`.dispatch` binding commands and
+  `& state` behavior, `IStore`, and `@fromState`.
+- **Internationalization** → `references/i18n.md`. `@aurelia/i18n` (wraps i18next, a peer
+  dependency): the `t` attribute/value converter, `nf`/`df`/`rt` formatting, the `I18N` service,
+  and locale switching.
 
 ## Tailwind CSS v4 Setup
 
