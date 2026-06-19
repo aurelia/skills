@@ -1,7 +1,6 @@
 ---
 name: aurelia2
 description: Create new and work with existing Aurelia 2 applications. Use this skill when scaffolding a new Aurelia 2 project, creating components/routes, writing Aurelia 2 code, debugging, adding SSR/prerendering, migrating an Aurelia 1 app to Aurelia 2, refactoring, or reviewing existing Aurelia 2 codebases. Covers project setup with Vite, Tailwind CSS v4, Vitest, Playwright, Storybook, SSR, the first-party plugins (HTTP/fetch-client, validation, dialog, state, i18n), Aurelia 1-to-2 migration, and best practices for templates, routing, DI, observation, and testing.
-argument-hint: "[new <project-name> | component <name> | route <name>]"
 ---
 
 # Aurelia 2 Application Skill
@@ -1393,6 +1392,11 @@ If the codebase has remnants of Aurelia 1 patterns (common during migration), lo
 - `activate()` / `deactivate()` router hooks -> `canLoad()` / `loading()` / `canUnload()` / `unloading()`
 - `<slot>` in light DOM -> `<au-slot>`
 - `<compose>` -> `<au-compose>`
+- `<require>` -> `<import>`, `<router-view>` -> `<au-viewport>`, `view-model.ref` -> `component.ref`
 - `PLATFORM.moduleName()` -> direct `import()` calls
+- `@computedFrom` getters -> plain getters (v2 tracks dependencies automatically)
 - `experimentalDecorators: true` in tsconfig -> remove it
+- A lingering `compatRegistration` (`@aurelia/compat-v1`) registration -> the migration is unfinished; it is a temporary shim, not a destination.
+
+For a full Aurelia 1 -> 2 migration playbook — the `@aurelia/compat-v1` escape hatch, bootstrap/template/component/router/plugin changes, and a phased migration strategy with checklist — read `references/migration.md`. Reach for it when porting a v1 app or reviewing a partially-migrated codebase.
 - `<require from="...">` -> `<import from="...">`
