@@ -1136,175 +1136,47 @@ Use `@import "tailwindcss"` and `@theme` in your CSS entry point:
 
 Tailwind v4 uses the `@tailwindcss/vite` plugin  -  no PostCSS config needed.
 
-## Testing Setup
+## Testing
 
-**vitest.config.ts**:
-```typescript
-import { fileURLToPath } from "node:url";
-import { mergeConfig, defineConfig, configDefaults } from "vitest/config";
-import viteConfig from "./vite.config";
+Components are tested with **Vitest** (jsdom) + `@aurelia/testing`'s `createFixture`. A minimal
+test — use `appHost` (not `host`) for DOM queries, and `await .started` before asserting:
 
-export default mergeConfig(
-  viteConfig,
-  defineConfig({
-    test: {
-      environment: "jsdom",
-      watch: false,
-      exclude: [...configDefaults.exclude, "e2e/*"],
-      root: fileURLToPath(new URL("./", import.meta.url)),
-      setupFiles: ["./test/setup.ts"]
-    },
-  }),
-);
-```
-
-**test/setup.ts**:
-```typescript
-import { BrowserPlatform } from '@aurelia/platform-browser';
-import { setPlatform, onFixtureCreated, type IFixture } from '@aurelia/testing';
-import { beforeAll, beforeEach, afterEach } from 'vitest';
-
-// Node 22+ ships an experimental `globalThis.localStorage` without `clear()`.
-// Provide a full Storage polyfill so tests can call `localStorage.clear()`.
-class MemoryStorage implements Storage {
-  private store = new Map<string, string>();
-  get length() { return this.store.size; }
-  clear(): void { this.store.clear(); }
-  getItem(key: string): string | null { return this.store.get(key) ?? null; }
-  key(index: number): string | null { return [...this.store.keys()][index] ?? null; }
-  removeItem(key: string): void { this.store.delete(key); }
-  setItem(key: string, value: string): void { this.store.set(key, value); }
-  [name: string]: any;
-}
-
-const storage = new MemoryStorage();
-Object.defineProperty(globalThis, 'localStorage', { value: storage, writable: true, configurable: true });
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'localStorage', { value: storage, writable: true, configurable: true });
-}
-
-function bootstrapTestEnv() {
-  const platform = new BrowserPlatform(window);
-  setPlatform(platform);
-  BrowserPlatform.set(globalThis, platform);
-}
-
-const fixtures: IFixture<object>[] = [];
-beforeAll(() => {
-  bootstrapTestEnv();
-  onFixtureCreated(fixture => { fixtures.push(fixture); });
-});
-
-beforeEach(() => {
-  localStorage.clear();
-});
-
-afterEach(async () => {
-  for (const f of fixtures) {
-    try { await f.stop(true); } catch { /* ignore */ }
-  }
-  fixtures.length = 0;
-});
-```
-
-**Example test** — use `appHost` (not `host`) for DOM queries:
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { createFixture } from '@aurelia/testing';
 import { MyComponent } from '../src/components/my-component';
 
 describe('my-component', () => {
-  it('should render', async () => {
+  it('renders', async () => {
     const { appHost, assertText } = await createFixture(
       '<my-component label="Test" count="5"></my-component>',
       {},
       [MyComponent],
     ).started;
 
-    // assertText for simple text checks
     assertText('Test: 5', { compact: true });
-
-    // appHost for DOM queries
     expect(appHost.querySelector('my-component')).not.toBeNull();
   });
 });
 ```
 
-### Testing with Mocked Dependencies
+Mock services through the 4th `createFixture` argument
+(`[Registration.instance(IApiService, mockApi)]`), and reach a component's view-model with
+`CustomElement.for(el).viewModel`.
 
-Use the 4th argument of `createFixture` to register mock services:
-```typescript
-import { createFixture } from '@aurelia/testing';
-import { Registration } from 'aurelia';
-import { MyComponent } from '../src/components/my-component';
-import { IApiService } from '../src/services/api-service';
+For the full setup (`vitest.config.ts`, `test/setup.ts` platform bootstrap), the complete
+`createFixture` fluent API and assertion/event helpers, testing value converters / custom attributes
+/ async / routing, mocks and spies, common pitfalls, and **Storybook** setup, read
+`references/testing.md`.
 
-it('renders with mocked service', async () => {
-  const mockApi = { get: vi.fn().mockResolvedValue({ name: 'Test' }) };
+## Troubleshooting & Forms
 
-  const { appHost, assertText } = await createFixture(
-    '<my-component></my-component>',
-    {},
-    [MyComponent],
-    [Registration.instance(IApiService, mockApi)],
-  ).started;
-
-  assertText('Test', { compact: true });
-  expect(appHost.querySelector('.result')).not.toBeNull();
-});
-```
-
-### Accessing Component ViewModels in Tests
-
-Use `CustomElement.for()` to access a component's viewmodel for method calls:
-```typescript
-import { CustomElement } from 'aurelia';
-import { MyComponent } from '../src/components/my-component';
-
-it('calls a method on the viewmodel', async () => {
-  const { appHost, container } = await createFixture(
-    '<my-component></my-component>',
-    {},
-    [MyComponent],
-  ).started;
-
-  const el = appHost.querySelector('my-component')!;
-  const vm = CustomElement.for<MyComponent>(el).viewModel;
-  vm.someMethod();
-
-  const settings = container.get(SettingsService);
-  expect(settings.getSomeValue()).toBe('expected');
-});
-```
-
-## Storybook Setup
-
-**.storybook/main.ts**:
-```typescript
-import type { StorybookConfig } from 'storybook/internal/types';
-import { mergeConfig, type InlineConfig } from 'vite';
-
-const config: StorybookConfig & { viteFinal?: (config: InlineConfig) => InlineConfig | Promise<InlineConfig> } = {
-  stories: ['../src/**/*.stories.@(ts|tsx|js|jsx|mdx)'],
-  addons: ['@storybook/addon-links'],
-  framework: { name: '@aurelia/storybook', options: {} },
-  core: { builder: '@storybook/builder-vite' },
-  viteFinal: async (viteConfig) => {
-    viteConfig.optimizeDeps = viteConfig.optimizeDeps || {};
-    viteConfig.optimizeDeps.exclude = viteConfig.optimizeDeps.exclude || [];
-    if (!viteConfig.optimizeDeps.exclude.includes('@aurelia/runtime-html')) {
-      viteConfig.optimizeDeps.exclude.push('@aurelia/runtime-html');
-    }
-    return mergeConfig(viteConfig, {});
-  },
-};
-export default config;
-```
-
-**.storybook/preview.ts**:
-```typescript
-export { render, renderToCanvas } from '@aurelia/storybook';
-```
+- **Debugging** → `references/troubleshooting.md`. Silent-failure triage (unregistered resources,
+  unobservable array mutations, hook-name shadowing, early `ref` access, SVG without `SVGAnalyzer`),
+  reading `AURxxxx` errors (use a `useDev: true` build to expand them), and debugging techniques.
+- **Forms** → `references/forms.md`. Inputs, checkboxes/radios/selects with `model.bind` and
+  `matcher.bind`, file inputs, and form submission — note `submit.trigger` does **not** preventDefault
+  by default; use `submit.trigger:prevent`.
 
 ## Common Mistakes to Avoid
 
@@ -1337,6 +1209,8 @@ export class Markets implements IRouteViewModel {
   async loading(params: Params) { ... }  // Works correctly
 }
 ```
+
+16. **Do NOT expect `submit.trigger` to preventDefault**  -  Aurelia 2 does not prevent a form's default submit. Use `submit.trigger:prevent="..."` (or call `$event.preventDefault()`), otherwise the page reloads. See `references/forms.md`.
 
 ## Working with Existing Aurelia 2 Codebases
 
