@@ -4,7 +4,9 @@ Agent skills for building and maintaining Aurelia applications.
 
 This repository currently ships one skill:
 
-- `skills/aurelia2` - Aurelia 2 application development, scaffolding, routing, dependency injection, templates, testing, SSR, prerendering, the first-party plugins (HTTP/fetch-client, validation, dialog, state, i18n), and review guidance.
+- [Aurelia 2](skills/aurelia2/SKILL.md) covers application development, scaffolding, routing, dependency injection, templates, testing, migration, and first-party plugins. Its short entry point directs agents to the references needed for each task.
+
+The guidance uses official Aurelia documentation and source. The current compatibility baseline is Aurelia `2.0.0-rc.2`, checked on 10 October 2026. Agents should check installed versions before applying version-sensitive examples.
 
 The `skills/aurelia2` folder is the canonical skill. The root plugin manifests are packaging only, so Claude Code, Codex, and other compatible agents can discover the same skill without duplicate copies.
 
@@ -57,13 +59,26 @@ cp -R skills/aurelia2 ~/.claude/skills/aurelia2
 
 ## Validate
 
-The skill has been checked with the local Codex skill validator and Claude plugin validator. If you have those tools installed, you can run:
+Run the portable repository check with Python 3; no installed agent tools or packages are required:
+
+```bash
+python3 scripts/validate.py
+```
+
+It checks local Markdown links, reference discoverability, code fences, the required skill fields, and plugin manifest consistency. GitHub Actions runs the same check on pushes and pull requests. It does not compile the embedded application examples or check external URLs.
+
+If installed, also run the agent-specific validators:
 
 ```bash
 python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/aurelia2
-python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
 claude plugin validate .
 ```
+
+## Maintaining the guidance
+
+Keep shared constraints in `SKILL.md` and task-specific detail in `references/`. Link new references from the entry point. Prefer official docs, release tags, and published package declarations when checking an API; the framework's master branch may contain unreleased features.
+
+When refreshing compatibility guidance, check the generator, core package versions, and integration peer dependencies together. Update the verification date after checking them. Exercise changed runtime examples in a small application or fixture where static validation cannot establish correctness. Keep both plugin manifest versions aligned.
 
 ## License
 

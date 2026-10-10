@@ -125,4 +125,8 @@ export class Counter {
 - Return the unchanged `state` (not `undefined`) for unhandled actions.
 - There is **no `|` value converter** for state — use the `& state` binding behavior.
 - Type the action union on `IStore<TState, TAction>` for compile-time checked `dispatch` calls.
-- Redux DevTools is auto-detected; configure via the options object passed to `.init(...)`.
+- Configure Redux DevTools through the optional second argument: `.init(initialState, { devToolsOptions: { disable: true } }, ...handlers)`. Check the installed types for available options.
+
+## Source
+
+- [Official state package](https://github.com/aurelia/aurelia/tree/v2.0.0-rc.2/packages/state)

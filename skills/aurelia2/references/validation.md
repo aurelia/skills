@@ -54,7 +54,6 @@ export class SignupForm {
         .minLength(3).withMessage('Username must be at least 3 characters')
       .ensure('email')
         .required()
-        .matches(/^[^@]+@[^@]+\.[^@]+$/).withMessage('Enter a valid email')
       .ensure('age')
         .satisfies(v => v == null || v >= 18).withMessage('Must be 18 or older');
   }
@@ -72,6 +71,8 @@ gating an expensive async check behind a cheap one).
 
 `required()` only rejects `null`, `undefined`, and `''` — not `false` or `0`. Use `.satisfies(...)`
 for strict boolean/zero checks.
+
+The built-in `email()` rule is deprecated in RC.1/RC.2. If email format checking is needed, use a custom rule backed by a maintained parser; a short regular expression is not a complete email validator.
 
 ## The validation controller
 
@@ -120,7 +121,7 @@ Apply the `& validate` binding behavior to the bindings you want validated. Trig
 `& validate:'changeOrBlur'`, `& validate:'focusout'`, `& validate:'manual'`.
 
 ```html
-<form submit.trigger="submit()">
+<form submit.trigger:prevent="submit()">
   <input value.bind="username & validate">
   <input value.bind="email & validate:'blur'">
 
@@ -168,3 +169,8 @@ class UniqueEmailRule extends BaseValidationRule {
 - Register `ValidationHtmlConfiguration` (the `-html` package), not the bare core configuration.
 - `required()` passes for `false`/`0`; use `satisfies` for those.
 - For localized messages, register `@aurelia/i18n` first, then `ValidationI18nConfiguration`.
+
+## Sources
+
+- [Official validation packages](https://github.com/aurelia/aurelia/tree/v2.0.0-rc.2/packages/validation)
+- [RC.1 and RC.2 deprecations](https://aurelia.io/blog/2026/10/5/aurelia-2-rc1-rc2-what-you-missed/)

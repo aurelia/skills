@@ -11,13 +11,13 @@ These are the most common traps because nothing crashes — the binding just sit
 |---------|-------|-----|
 | A custom element renders nothing / a custom attribute does nothing / a value converter prints the raw value | The resource isn't registered in scope | Add `<import from="./x">`, list it in the component's `dependencies`, or register it globally in `main.ts` |
 | Array change doesn't update the view | Direct index assignment (`arr[0] = x`) or `arr.length = 0` isn't observable | Use `push`/`splice`/`pop`/`shift` or replace the reference (`this.items = [...]`) |
-| A plain (non-bindable) property change doesn't update the view | It isn't observed | Make it `@observable`, or drive the view from a `@bindable`/bound value |
+| A plain property change does not update the view | Wrong binding scope, one-time mode, or an untracked dependency | Bound properties are observed automatically; inspect the binding and object instance before adding decorators |
 | A lifecycle or route hook never runs | A class property shadows the method name (e.g. `loading = true` overwrites the `loading()` route hook) | Rename the property (`isLoading`). Applies to `binding`/`bound`/`attached`/`loading`/`canLoad`/etc. |
 | `ref` element is `undefined` | Accessed in `constructor`/`binding` | Read refs in `bound()` or later; do DOM work in `attached()` |
 | SVG attribute bindings (`cx`, `r`, `d`, `viewBox`) silently do nothing | `SVGAnalyzer` not registered | Register `SVGAnalyzer` from `@aurelia/runtime-html` in `main.ts` |
 | `click.delegate` (and other `.delegate`) does nothing | `.delegate` was removed in v2 | Use `.trigger` |
 | Two-way binding to a custom element doesn't flow back | The target property isn't `@bindable`, or the mode is to-view | Mark it `@bindable` and use `.bind`/`.two-way` |
-| A form reloads the page on submit | `submit.trigger` does **not** preventDefault by default | Use `submit.trigger:prevent="..."` (see `references/forms.md`) |
+| A form reloads the page on submit | `submit.trigger` does **not** preventDefault by default | Use `submit.trigger:prevent="..."` (see [forms.md](forms.md)) |
 
 ## Reading `AURxxxx` errors
 
@@ -54,14 +54,15 @@ export class MyComponent {
 }
 ```
 
-**Inspect a live component** in the browser console — select its element, then:
+**Inspect a live component** using `CustomElement` imported from `aurelia` and its host element:
 
 ```javascript
-const vm = $0.au.controller.viewModel;   // the view-model instance
-$0.au.controller.bindings;               // its bindings
+// From application/debug code where the public API is imported:
+const controller = CustomElement.for(element);
+const vm = controller.viewModel;
 ```
 
-**Router logging** — `RouterConfiguration.customize(o => { o.logLevel = 'debug'; })`.
+**Router logging** — configure Aurelia logging with `LoggerConfiguration` and `LogLevel` from the public kernel API; check the installed router options before adding logging settings.
 
 **Check DI resolution** — wrap a `resolve`/`container.get` in try/catch and log; "no registration"
 means the service was never registered (or the key/interface doesn't match exactly), and a cyclic
@@ -72,17 +73,24 @@ dependency means two services inject each other (break the cycle or use `lazy`).
 Per the framework's own guidance, these need understanding of Aurelia internals rather than
 pattern-matching: lifecycle **timing** problems, DI **container configuration** issues, **template
 compilation** errors, and **cross-component communication**. When stuck on one of these, verify the
-lifecycle order (SKILL.md "Component Lifecycle Hooks"), the registration, and the binding scope
+lifecycle order in [components.md](components.md), the registration, and the binding scope
 before rewriting code.
 
 ## Quick triage checklist
 
 1. **Nothing rendered?** Is the component imported/registered in scope? Check the console for an
    `AUR` error. Is the custom element name kebab-case and the file paired correctly?
-2. **Binding not updating?** Is the source `@bindable`/`@observable`? Array mutated with
+2. **Binding not updating?** Is the binding reading the intended object and scope? Array mutated with
    `push`/`splice` (not index assignment)? Binding mode not `one-time`? Converter/behavior registered?
 3. **Hook never fires?** Does a property share the hook's name (`loading`, `bound`, …)? Rename it.
 4. **`ref`/DOM null?** Access in `bound()`/`attached()`, not `constructor`/`binding`.
 5. **Event handler dead?** `.trigger`, not `.delegate`. Form reloading? Add `:prevent`.
 6. **DI error?** Service registered? Key/interface matches exactly? No injection cycle?
 7. **Still cryptic?** Switch to a dev build (`useDev: true`) to expand the `AUR` message + docs link.
+
+Restore normal Vite configuration after forcing a diagnostic `useDev: true` build.
+
+## Sources
+
+- [Developing with AI](https://docs.aurelia.io/developer-guides/developing-with-ai)
+- [Official error documentation](https://docs.aurelia.io/developer-guides/error-messages)

@@ -14,18 +14,19 @@ submission. The recurring Aurelia-specific points are `model.bind` (for non-stri
 
 <!-- Control when the model updates -->
 <input value.bind="search & debounce:300">                 <!-- after typing pauses -->
-<input value.bind="query & updateTrigger:'blur'">          <!-- only on blur/change -->
+<input value.bind="query & updateTrigger:'blur'">          <!-- only on blur -->
 ```
 
-**Numbers:** an `<input type="number">` still produces a **string**. Aurelia has no built-in number
-coercion, so coerce it yourself — a value converter, a typed setter, or parse on use:
+**Numbers:** `value.bind` on an `<input type="number">` still produces a **string**. Bind the
+DOM's `valueAsNumber` instead (Aurelia observes it two-way on inputs), or coerce yourself:
 
 ```html
-<input type="number" value.bind="age">   <!-- age is a string: '42' -->
+<input type="number" value.bind="age">             <!-- age is a string: '42' -->
+<input type="number" value-as-number.bind="age">   <!-- age is a number (NaN when empty) -->
 ```
 
 ```typescript
-// simplest: coerce where you read it, or expose a getter/setter pair
+// alternative: coerce where you read it, or expose a getter/setter pair
 set ageInput(v: string) { this.age = v === '' ? null : Number(v); }
 get ageInput() { return this.age == null ? '' : String(this.age); }
 ```
@@ -91,7 +92,8 @@ Use `value.bind` on the `<select>` and `model.bind` on each `<option>` for non-s
 
 ## Files
 
-File inputs are read-only — handle the `change` event:
+File inputs are read-only — handle the `change` event (or use `files.from-view="files"`; the
+`files` property is observed read-only on `<input>`):
 
 ```html
 <input type="file" multiple accept="image/*" change.trigger="onFiles($event)">
@@ -129,9 +131,10 @@ async save() {
 ```
 
 Equivalent manual form: `<form submit.trigger="save($event)">` with `$event.preventDefault()` in
-the handler. (Mechanics: Aurelia calls `preventDefault()` only when `:prevent` is set and the
-handler does not return `true`, so returning `true` re-enables the native submit even with
-`:prevent`.)
+the handler. (Mechanics: the `:prevent` modifier calls `preventDefault()` unconditionally before
+the handler runs. The separate "handler returning `true` skips preventDefault" rule only applies
+when the app-wide `IListenerBindingOptions.prevent` default is switched on; it is `false` by
+default.)
 
 ## Validation
 
@@ -141,13 +144,17 @@ Form bindings integrate with `@aurelia/validation` via the `& validate` binding 
 <input value.bind="email & validate">
 ```
 
-See `references/validation.md` for rules, the scoped controller, triggers, and error display.
+See [validation.md](validation.md) for rules, the scoped controller, triggers, and error display.
 
 ## Gotchas
 
 - Array/object checkboxes and object selects need **`model.bind`**, not `value` (which stringifies).
 - Object equality in checkbox arrays / selects needs **`matcher.bind`**; otherwise only identical
   references match.
-- `<input type="number">` yields a **string** — coerce it; there is no built-in number converter.
+- `<input type="number">` with `value.bind` yields a **string** — use `value-as-number.bind` or coerce it.
 - `submit.trigger` does **not** preventDefault — use `:prevent` (the page reloads otherwise).
-- File inputs can't be bound — read `files` in a `change.trigger` handler.
+- File inputs can't be written — read `files` via `files.from-view` or a `change.trigger` handler.
+
+## Source
+
+- [Official runtime-html package](https://github.com/aurelia/aurelia/tree/v2.0.0-rc.2/packages/runtime-html)

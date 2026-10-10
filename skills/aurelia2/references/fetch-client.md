@@ -57,7 +57,8 @@ All methods return the native `Promise<Response>`. Read the body with `.json()`,
 - `http.delete(url, body?, options?)`
 - `http.fetch(urlOrRequest, options?)` — escape hatch for any method
 
-Use the `json()` helper to serialize a body and set `Content-Type: application/json`. Unlike
+Use the `json()` helper to serialize a body. It only returns a JSON string; the client then adds
+`Content-Type: application/json` when the body parses as JSON and no content type is set. Unlike
 `JSON.stringify(undefined)`, `json(undefined)` returns `'{}'`.
 
 ```typescript
@@ -80,7 +81,7 @@ this.http.configure(c => c
   })
   .withInterceptor(authInterceptor)
   .rejectErrorResponses()          // make 4xx/5xx reject instead of resolve
-  .withRetry({ maxRetries: 3, strategy: RetryStrategy.exponential, interval: 1000 })
+  .withRetry({ maxRetries: 3, strategy: RetryStrategy.exponential, interval: 2000 })
 );
 ```
 
@@ -103,25 +104,16 @@ The client also exposes `isRequesting`, `activeRequestCount`, and `isConfigured`
 An interceptor is a plain object; every method is optional.
 
 ```typescript
-import { IHttpClient } from '@aurelia/fetch-client';
-
 const authInterceptor = {
   request(request: Request): Request {
     const token = localStorage.getItem('auth_token');
     if (token) request.headers.set('Authorization', `Bearer ${token}`);
     return request;
   },
-
-  async responseError(error: unknown, request?: Request, client?: IHttpClient): Promise<Response> {
-    if (error instanceof Response && error.status === 401) {
-      const token = await refreshToken();
-      request!.headers.set('Authorization', `Bearer ${token}`);
-      return client!.fetch(request!);   // retry once with a fresh token
-    }
-    throw error;
-  },
 };
 ```
+
+Keep token refresh retries bounded and preserve a replayable request body before sending. Avoid calling the same client recursively on every 401. Retry writes only when the operation is safe to repeat.
 
 Interceptor hooks: `request`, `requestError`, `response`, `responseError`, `dispose`. A
 `request` hook may return a `Response` to short-circuit fetch; a `response` hook may return a
@@ -143,8 +135,9 @@ request. Guard it: `withRetry({ doRetry: (res, req) => !req.signal?.aborted && r
 ## Retry & caching (advanced)
 
 - **Retry:** `withRetry({ maxRetries, strategy, interval, doRetry?, beforeRetry? })`.
-  `RetryStrategy` is `fixed | incremental | exponential | random`. `exponential` requires
-  `interval >= 1000`. Must be the last registered interceptor.
+  `RetryStrategy` is `fixed | incremental | exponential | random` (default: `fixed`, 3 retries,
+  1000 ms). `exponential` throws unless `interval` is **greater than** 1000 ms. Must be the last
+  registered interceptor.
 - **Caching:** `CacheInterceptor` with a storage backend (`MemoryStorage` default,
   `BrowserLocalStorage`, `BrowserSessionStorage`, `BrowserIndexDBStorage`). Supports `cacheTime`,
   `staleTime`, and background refresh. The cache key is the full URL including query string
@@ -157,3 +150,7 @@ request. Guard it: `withRetry({ doRetry: (res, req) => !req.signal?.aborted && r
 - `withDefaults` headers merge with per-request headers; per-request wins.
 - The default `IHttpClient` is shared. Use `newInstanceOf(IHttpClient)` to avoid one service's
   `configure()` leaking into another.
+
+## Source
+
+- [Official fetch-client package](https://github.com/aurelia/aurelia/tree/v2.0.0-rc.2/packages/fetch-client)

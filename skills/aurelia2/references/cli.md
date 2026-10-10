@@ -90,9 +90,13 @@ my-app/
 
 ## Gotchas
 
-- Requires Node.js 18+.
+- Use a Node version supported by the selected bundler and tools. See [scaffolding.md](scaffolding.md) for the verified baseline.
 - In silent (`-s`) mode the generator does **not** install dependencies — run `npm install`
   yourself afterward.
 - If you selected Playwright, also run `npx playwright install --with-deps`.
 - After scaffolding, strip out demo/sample data before building the real app, and prune any
   selected tooling the app does not actually use.
+
+## Source
+
+- [Official generator and feature definitions](https://github.com/aurelia/new)

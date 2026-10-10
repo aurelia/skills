@@ -34,8 +34,9 @@ DialogConfigurationStandard.customize(settings => {
 
 ## Opening a dialog
 
-Resolve `IDialogService` and call `open(...)`. Use a dynamic `import()` for the dialog component
-so it is lazily loaded.
+Resolve `IDialogService` and call `open(...)`. To lazy-load the dialog component, pass a function
+that returns the **class** (or a promise of it). The service does not unwrap module namespaces, so
+map the `import()` result to the export — `() => import('./confirm-dialog')` alone renders nothing.
 
 ```typescript
 import { resolve } from 'aurelia';
@@ -45,10 +46,12 @@ export class Toolbar {
   private dialogs = resolve(IDialogService);
 
   async confirmDelete() {
-    const { dialog } = await this.dialogs.open({
-      component: () => import('./confirm-dialog'),
+    const { wasCancelled, dialog } = await this.dialogs.open({
+      component: () => import('./confirm-dialog').then(m => m.ConfirmDialog),
       model: { message: 'Delete this item?' },
     });
+
+    if (wasCancelled) return;
 
     const result = await dialog.closed;          // wait for the user to close it
     if (result.status === 'ok' && result.value) {
@@ -60,10 +63,11 @@ export class Toolbar {
 
 `open()` returns a promise that resolves to `{ wasCancelled, dialog }` once the dialog has opened
 (`wasCancelled` is true if `canActivate` blocked it). `dialog.closed` is a promise for the close
-result. A shorthand `whenClosed()` skips the open result:
+result. A shorthand `whenClosed()` skips the open result (since rc.2, calling it with no handler is
+typed as `Promise<DialogCloseResult>`):
 
 ```typescript
-this.dialogs.open({ component: () => import('./confirm-dialog'), model: { message: 'Sure?' } })
+this.dialogs.open({ component: () => import('./confirm-dialog').then(m => m.ConfirmDialog), model: { message: 'Sure?' } })
   .whenClosed(result => {
     if (result.status === 'ok') { /* ... */ }
   });
@@ -113,15 +117,23 @@ Closing methods on `IDialogController`:
 
 - `controller.ok(value?)` → closes with `status: 'ok'`.
 - `controller.cancel(value?)` → closes with `status: 'cancel'`.
-- `controller.error(value)` → closes with an error (bypasses `canDeactivate`).
+- `controller.error(value)` → closes and **rejects** `dialog.closed` / `whenClosed()` with a
+  `DialogCloseError` (`wasCancelled: false`, `value`); bypasses `canDeactivate`.
 
 The close result is `{ status, value }` where `status` is `'ok' | 'cancel' | 'error' | 'abort'`.
+`'abort'` is what `ok()`/`cancel()` return when `canDeactivate` returns `false`; the dialog stays open.
 
 ## Gotchas
 
 - Resolve `IDialogController` in the dialog component to close it; the `$dialog` property is only
   available after the constructor.
 - Classic renderer: `keyboard` is an array (`['Escape', 'Enter']`), not a boolean, and `lock: true`
-  disables Escape/overlay dismissal.
-- `rejectOnCancel: true` makes `cancel()` reject — wrap the open promise in try/catch.
+  (the Classic default) disables Escape/Enter and overlay dismissal unless `keyboard` /
+  `overlayDismiss` are set explicitly.
+- `rejectOnCancel: true` makes `dialog.closed` / `whenClosed()` reject on cancel (and `open()` reject
+  when `canActivate` returns `false`) — use try/catch.
 - `error()` skips `canDeactivate`.
+
+## Source
+
+- [Official dialog package](https://github.com/aurelia/aurelia/tree/v2.0.0-rc.2/packages/dialog)

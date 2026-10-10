@@ -1,23 +1,12 @@
 # Migrating Aurelia 1 → Aurelia 2
 
 Read this when porting an Aurelia 1 (v1) app to Aurelia 2, or when reviewing a codebase that is
-part-way through that migration. The SKILL.md "Critical Breaking Changes from Aurelia 1" and
-"Migrating Aurelia 1 Patterns" sections are the quick reference; this file is the deeper playbook.
+part-way through that migration. Use the tables below as a quick reference, then follow the relevant steps within the agreed migration scope.
 
 The migration story is **incremental**: stand up a v2 shell, register the `@aurelia/compat-v1`
 shims so most v1 syntax keeps working, then modernize file-by-file and remove the shims at the end.
 
-**The endgame is a proper, idiomatic Aurelia 2 app — compat-v1 is a stepping stone, not a
-destination.** It exists to keep an app running *while* you port, so the migration never has to
-happen in one big bang. Two rules follow from that:
-
-- Compat-v1 keeps **existing** v1 code alive. **Never author *new* code against shimmed v1 syntax**
-  (`.delegate`, `.call`, `@computedFrom`, `BindingEngine`, `<compose view-model>`, `@noView`/
-  `@inlineView`). New and touched code uses the v2 idioms in SKILL.md.
-- Each shim it provides marks an outstanding porting task. The migration is "done" only when
-  `compatRegistration` is removed and the `@aurelia/compat-v1` dependency is dropped — that is the
-  goal, and an agent should keep steering toward it (and call it out when reviewing), not settle on
-  a permanently-shimmed app.
+Use v2 syntax for new components. Keep compatibility shims while existing code still depends on them, then remove each shim after the corresponding migration is verified. A request to fix one component does not authorize migrating the whole application.
 
 ## `@aurelia/compat-v1` — the temporary escape hatch
 
@@ -65,7 +54,7 @@ export function configure(aurelia) {
 }
 ```
 
-v2 is direct and imperative — see SKILL.md "Application Bootstrap":
+v2 is direct and imperative — see [scaffolding.md](scaffolding.md):
 
 ```typescript
 // v2 main.ts
@@ -106,7 +95,7 @@ Aurelia
 
 ## Components, lifecycle & DI
 
-Lifecycle hook renames (see SKILL.md "Component Lifecycle Hooks" for the full v2 order):
+Lifecycle hook renames (see [components.md](components.md) for the full v2 order):
 
 | v1 | v2 |
 |----|----|
@@ -127,7 +116,7 @@ export class UserList {
   constructor(private http: HttpClient) {}
 }
 
-// v2 — resolve() class field (see SKILL.md "Dependency Injection")
+// v2 — resolve() class field (see reactivity.md)
 import { resolve } from 'aurelia';
 import { IHttpClient } from '@aurelia/fetch-client';
 export class UserList {
@@ -144,7 +133,7 @@ Use `resolve()` (preferred) or `static inject`. `@bindable`, `@customElement`, `
 ## Router
 
 v1 `configureRouter()` with `moduleId` strings → the declarative `@route` decorator with dynamic
-`import()` (see SKILL.md "Routing"). Outlet `<router-view>` → `<au-viewport>`. Navigation
+`import()` (see [routing.md](routing.md)). Outlet `<router-view>` → `<au-viewport>`. Navigation
 `router.navigateToRoute(name, params)` → `router.load(...)`.
 
 Router lifecycle hook renames:
@@ -183,7 +172,7 @@ Add a `customize(options)` that returns a configured registry when the plugin ne
 
 ## Recommended strategy
 
-1. **Scaffold a v2 shell** (`npx makes aurelia` — see `references/cli.md`) and rewrite `main.ts`.
+1. **Scaffold a v2 shell** (`npx makes aurelia` — see [cli.md](cli.md)) and rewrite `main.ts`.
 2. **Register `compatRegistration`** and copy the v1 `src/` over; most templates keep working.
 3. **Routing first** — convert `configureRouter` → `@route`, rename router hooks, `<router-view>`
    → `<au-viewport>`. The app needs this to navigate.
@@ -193,5 +182,9 @@ Add a `customize(options)` that returns a configured registry when the plugin ne
 6. **Observation & cleanup** — port `BindingEngine` usage to `IObserverLocator`; remove
    `compat-v1` once nothing depends on it, then drop the dependency.
 
-When reviewing a partially-migrated app, the leftover-v1 markers to flag are exactly the SKILL.md
-"Migrating Aurelia 1 Patterns" list plus a lingering `compatRegistration` registration.
+When reviewing a partial migration, report remaining v1 patterns and compatibility registrations. A scoped migration can intentionally retain shims; remove them only after the dependent code has been ported and verified.
+
+## Sources
+
+- [Official migration guide](https://docs.aurelia.io/migrating-to-aurelia-2/cheat-sheet)
+- [Compatibility package](https://github.com/aurelia/aurelia/tree/v2.0.0-rc.2/packages/compat-v1)

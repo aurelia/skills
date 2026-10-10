@@ -1,9 +1,7 @@
 # Testing
 
 Aurelia 2 components are tested with **Vitest** (jsdom) + `@aurelia/testing`'s `createFixture`.
-This file covers the full setup plus the deep `@aurelia/testing` surface — assertions, event
-helpers, mocks, async, value converters/attributes, and router testing. Storybook setup is at the
-end.
+This reference covers assertions, event helpers, mocks, async behavior, and router tests. Preserve the runner already used by the app; Vitest is the example here.
 
 ## Setup
 
@@ -28,50 +26,39 @@ export default mergeConfig(
 );
 ```
 
-**test/setup.ts** — set the Aurelia platform once, auto-stop fixtures after each test, and polyfill
-`localStorage` (Node 22+ ships an experimental `globalThis.localStorage` without `clear()`):
+If tests declare decorated classes outside `src/` on Vite 8, extend the existing Aurelia plugin's `standardDecoratorInclude`, for example `aurelia({ standardDecoratorInclude: ['src/**/*.{ts,js}', 'test/**/*.{ts,js}'] })`. Otherwise Oxc can leave those standard decorators untransformed. Do not register a second plugin instance in the test config.
+
+**test/setup.ts** — set the platform once and dispose fixtures after each test. Surface cleanup failures so broken teardown does not pass silently.
 
 ```typescript
 import { BrowserPlatform } from '@aurelia/platform-browser';
 import { setPlatform, onFixtureCreated, type IFixture } from '@aurelia/testing';
-import { beforeAll, beforeEach, afterEach } from 'vitest';
+import { beforeAll, afterAll, afterEach } from 'vitest';
 
-class MemoryStorage implements Storage {
-  private store = new Map<string, string>();
-  get length() { return this.store.size; }
-  clear(): void { this.store.clear(); }
-  getItem(key: string): string | null { return this.store.get(key) ?? null; }
-  key(index: number): string | null { return [...this.store.keys()][index] ?? null; }
-  removeItem(key: string): void { this.store.delete(key); }
-  setItem(key: string, value: string): void { this.store.set(key, value); }
-  [name: string]: any;
-}
+const fixtures: IFixture<object>[] = [];
+let tracking: { dispose(): void } | undefined;
 
-const storage = new MemoryStorage();
-Object.defineProperty(globalThis, 'localStorage', { value: storage, writable: true, configurable: true });
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'localStorage', { value: storage, writable: true, configurable: true });
-}
-
-function bootstrapTestEnv() {
+beforeAll(() => {
   const platform = new BrowserPlatform(window);
   setPlatform(platform);
   BrowserPlatform.set(globalThis, platform);
-}
+  tracking = onFixtureCreated(fixture => { fixtures.push(fixture); });
+});
 
-const fixtures: IFixture<object>[] = [];
-beforeAll(() => {
-  bootstrapTestEnv();
-  onFixtureCreated(fixture => { fixtures.push(fixture); });
-});
-beforeEach(() => { localStorage.clear(); });
 afterEach(async () => {
-  for (const f of fixtures) {
-    try { await f.stop(true); } catch { /* ignore */ }
-  }
-  fixtures.length = 0;
+  const results = await Promise.allSettled(
+    fixtures.splice(0).filter(fixture => !fixture.torn).map(async fixture => {
+      await fixture.stop(true);
+    }),
+  );
+  const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+  if (errors.length) throw new AggregateError(errors, 'Fixture cleanup failed');
 });
+
+afterAll(() => { tracking?.dispose(); });
 ```
+
+Use jsdom's storage for tests that need it, with a configured document URL. Add a storage mock only when a specific runtime incompatibility requires it, and restore globals afterward.
 
 ## `createFixture` — two forms
 
@@ -149,13 +136,12 @@ await tasksSettled();
 assertText('Bob');
 ```
 
-This also covers async lifecycle (a `binding()`/`attaching()` that returns a Promise resolves
-before `started`) and is the correct wait for debounced bindings combined with fake/real timers.
+Await `started` for async lifecycle hooks. `tasksSettled()` waits for queued framework work, not arbitrary fetches. With fake timers and debounced bindings, advance the relevant timers before waiting for the queue to settle.
 
 ## Mocks & spies
 
-Register mock services through the 4th `createFixture` argument with `Registration.instance`
-(or `.singleton`). Use your test runner's spies (`vi.fn()`):
+Register mock services through the 3rd `createFixture` argument with `Registration.instance`
+(or `.singleton`). The fourth argument is the `autoStart` boolean. Use your test runner's spies (`vi.fn()`):
 
 ```typescript
 import { Registration } from 'aurelia';
@@ -166,8 +152,7 @@ const api = { getUser: vi.fn().mockResolvedValue({ name: 'Test' }) };
 const { assertText, started } = createFixture(
   '<user-card></user-card>',
   {},
-  [UserCard],
-  [Registration.instance(IApiService, api)],
+  [UserCard, Registration.instance(IApiService, api)],
 );
 await started;
 assertText('Test', { compact: true });
@@ -178,7 +163,7 @@ expect(api.getUser).toHaveBeenCalled();
 `.reset()`, and `.restore()` if you want a dependency-free spy.
 
 To call methods on the component under test, get its view-model with `CustomElement.for(el).viewModel`
-(see SKILL.md), or use the `component` returned by the fixture when the component is the root.
+(see [components.md](components.md)), or use the `component` returned by the fixture when the component is the root.
 
 ## Testing value converters, behaviors & attributes
 
@@ -221,40 +206,16 @@ the redirected component rendered). Router events are observable via `container.
 ## Pitfalls
 
 - Forgetting `await started` → asserting before render/async hooks finish.
-- Not calling `stop(true)` → leaked fixtures/DOM across tests. (The SKILL.md `test/setup.ts` stops
-  tracked fixtures in `afterEach`; still prefer explicit `stop(true)` in focused tests.)
+- Not calling `stop(true)` → leaked fixtures/DOM across tests. (The setup above tracks and stops fixtures; explicit `stop(true)` is also safe because cleanup checks `fixture.torn`.)
 - Asserting without `await tasksSettled()` after a state change → stale DOM.
 - Querying `testHost` (the wrapper) instead of `appHost` (the component host).
 - Platform not set → bootstrap `setPlatform(...)` in `test/setup.ts` (see Setup above).
 
 ## Storybook
 
-Storybook (for visual component development) uses the `@aurelia/storybook` framework on the Vite
-builder. Only add it when the app actually uses it.
+For current framework configuration and stories, read [storybook.md](storybook.md).
 
-**.storybook/main.ts**:
-```typescript
-import type { StorybookConfig } from 'storybook/internal/types';
-import { mergeConfig, type InlineConfig } from 'vite';
+## Sources
 
-const config: StorybookConfig & { viteFinal?: (config: InlineConfig) => InlineConfig | Promise<InlineConfig> } = {
-  stories: ['../src/**/*.stories.@(ts|tsx|js|jsx|mdx)'],
-  addons: ['@storybook/addon-links'],
-  framework: { name: '@aurelia/storybook', options: {} },
-  core: { builder: '@storybook/builder-vite' },
-  viteFinal: async (viteConfig) => {
-    viteConfig.optimizeDeps = viteConfig.optimizeDeps || {};
-    viteConfig.optimizeDeps.exclude = viteConfig.optimizeDeps.exclude || [];
-    if (!viteConfig.optimizeDeps.exclude.includes('@aurelia/runtime-html')) {
-      viteConfig.optimizeDeps.exclude.push('@aurelia/runtime-html');
-    }
-    return mergeConfig(viteConfig, {});
-  },
-};
-export default config;
-```
-
-**.storybook/preview.ts**:
-```typescript
-export { render, renderToCanvas } from '@aurelia/storybook';
-```
+- [Official testing source and fixture API](https://github.com/aurelia/aurelia/blob/v2.0.0-rc.2/packages/testing/src/startup.ts)
+- [Testing guide](https://docs.aurelia.io/developer-guides/overview/testing)
