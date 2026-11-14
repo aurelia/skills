@@ -70,6 +70,7 @@ export async function renderToString(
   const host = window.document.querySelector<HTMLElement>('#app')!;
 
   const au = new Aurelia();
+  au.register(Registration.singleton(ITemplateElementFactory, SsrTemplateElementFactory));
   au.app({
     host,
     component: typeof component === 'function' ? component : CustomElement.define({ name: 'ssr-app', template: '' }, component as any),
@@ -81,6 +82,42 @@ export async function renderToString(
 
   return renderedContent;
 }
+```
+
+### Multi-Request Template Isolation (`SsrTemplateElementFactory`)
+
+In a client-side SPA, Aurelia's default `TemplateElementFactory` caches parsed `<template>` elements in a module-level dictionary (`markupCache`). In server environments where each incoming HTTP request creates and destroys its own JSDOM document, reusing cached template nodes from a destroyed document causes cross-document TreeWalker failures and `Error: AUR0757 (The compiled template is not aligned with the render instructions)`.
+
+To ensure complete request isolation across requests in long-running Node/Hono server processes, register a request-scoped `SsrTemplateElementFactory`:
+
+```typescript
+import {
+  Registration,
+  ITemplateElementFactory,
+  IPlatform,
+  resolve,
+} from 'aurelia';
+
+class SsrTemplateElementFactory implements ITemplateElementFactory {
+  private readonly platform = resolve(IPlatform);
+
+  public createTemplate(input: string | Node): HTMLTemplateElement {
+    if (typeof input === 'string') {
+      const template = this.platform.document.createElement('template');
+      template.innerHTML = input;
+      return template;
+    }
+    if (input.nodeName !== 'TEMPLATE') {
+      const template = this.platform.document.createElement('template');
+      template.content.appendChild(input);
+      return template;
+    }
+    return input as HTMLTemplateElement;
+  }
+}
+
+// Register in request-scoped Aurelia instance
+au.register(Registration.singleton(ITemplateElementFactory, SsrTemplateElementFactory));
 ```
 
 ---
