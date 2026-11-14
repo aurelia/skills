@@ -47,6 +47,7 @@ Load only the relevant files:
 | Translations and locale formatting | [i18n.md](references/i18n.md) |
 | Port an Aurelia 1 application | [migration.md](references/migration.md) |
 | Enhance existing/server-rendered HTML | [enhancement.md](references/enhancement.md) |
+| Server-side rendering (SSR) and hydration | [ssr.md](references/ssr.md) |
 
 ## Essential rules
 
