@@ -13,6 +13,7 @@ These are the most common traps because nothing crashes — the binding just sit
 | Array change doesn't update the view | Direct index assignment (`arr[0] = x`) or `arr.length = 0` isn't observable | Use `push`/`splice`/`pop`/`shift` or replace the reference (`this.items = [...]`) |
 | A plain property change does not update the view | Wrong binding scope, one-time mode, or an untracked dependency | Bound properties are observed automatically; inspect the binding and object instance before adding decorators |
 | A lifecycle or route hook never runs | A class property shadows the method name (e.g. `loading = true` overwrites the `loading()` route hook) | Rename the property (`isLoading`). Applies to `binding`/`bound`/`attached`/`loading`/`canLoad`/etc. |
+| Teardown or cleanup in `detached()` or `unbind()` never executes | `detached()` and `unbind()` are legacy Aurelia 1 hooks not recognized by Aurelia 2 | Rename to `detaching()` and `unbinding()` |
 | `ref` element is `undefined` | Accessed in `constructor`/`binding` | Read refs in `bound()` or later; do DOM work in `attached()` |
 | SVG attribute bindings (`cx`, `r`, `d`, `viewBox`) silently do nothing | `SVGAnalyzer` not registered | Register `SVGAnalyzer` from `@aurelia/runtime-html` in `main.ts` |
 | `click.delegate` (and other `.delegate`) does nothing | `.delegate` was removed in v2 | Use `.trigger` |

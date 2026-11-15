@@ -61,6 +61,42 @@ Usage:
 <status-badge status="success" message="Complete"></status-badge>
 ```
 
+### Single-File Components (.aux)
+
+Aurelia 2 supports Single-File Components via `.aux` (Aurelia in HTML), unifying template markup, component script, and scoped styles into a single web-standard file:
+
+```html
+<template as-custom-element="ui-badge" bindable="variant, text">
+  <span class="badge ${variant || 'default'}">
+    <slot>${text}</slot>
+  </span>
+</template>
+
+<script>
+  import { bindable } from 'aurelia';
+
+  export class UiBadge {
+    @bindable variant = 'default';
+    @bindable text = '';
+  }
+</script>
+
+<style scoped>
+  .badge {
+    display: inline-flex;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+  }
+</style>
+```
+
+Key conventions:
+- `<template as-custom-element="custom-tag">`: Explicitly defines the element tag name adhering to W3C custom element specifications (must contain a hyphen).
+- Template attributes: `bindable="prop1, prop2"`, `containerless`, `use-shadow-dom="open"`.
+- `<style scoped>`: Styles are scoped to the component template via unique dataset attributes, or compiled to `shadowCSS` in Shadow DOM mode.
+- TC39 Stage 3 Standard Decorators: Works with standard modern decorators (`2023-11`) with `experimentalDecorators: false`.
+
 ### Explicit Component Definition with `@customElement`
 
 ```typescript
@@ -149,15 +185,20 @@ export class MyComponent {
 ```typescript
 import { bindable, BindingMode } from 'aurelia';
 
+export interface UserProfile {
+  name: string;
+  email: string;
+}
+
 export class UserCard {
-  @bindable user: any;
+  @bindable user: UserProfile | null = null;
   @bindable isActive = false;
 
   // Explicit two-way binding mode
   @bindable({ mode: BindingMode.twoWay }) selectedId = '';
 
   // Change callback  -  convention: propertyName + "Changed"
-  userChanged(newUser: any, oldUser: any) {
+  userChanged(newUser: UserProfile | null, oldUser: UserProfile | null) {
     console.log('User changed:', newUser);
   }
 

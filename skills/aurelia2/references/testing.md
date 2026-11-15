@@ -83,7 +83,7 @@ await stop(true);         // stop + dispose + clean up the DOM
 ```typescript
 const { component, assertText, started, stop } = createFixture
   .component(class { greeting = 'Hello'; })
-  .html`<div>${(vm: any) => vm.greeting} world</div>`
+  .html`<div>${(vm: { greeting: string }) => vm.greeting} world</div>`
   .deps(SomeDep)
   .build();
 await started;
