@@ -65,7 +65,7 @@ export class Subscriber {
   private subscription?: { dispose(): void };
 
   bound() {
-    this.subscription = this.ea.subscribe('item:saved', (payload: any) => {
+    this.subscription = this.ea.subscribe('item:saved', (payload: { id: string }) => {
       console.log('Item saved:', payload);
     });
   }

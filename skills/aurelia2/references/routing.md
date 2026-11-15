@@ -108,8 +108,15 @@ Routed components can implement `IRouteViewModel` for route-specific lifecycle h
 ```typescript
 import { IRouteViewModel, Params, RouteNode, INavigationOptions } from '@aurelia/router';
 
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export class ProductDetail implements IRouteViewModel {
-  product: any;
+  product: Product | null = null;
+  relatedProducts: Product[] = [];
 
   // Guard: can we load this route? Return false or a redirect path to prevent.
   async canLoad(params: Params, next: RouteNode, current: RouteNode | null) {

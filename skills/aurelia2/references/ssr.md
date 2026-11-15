@@ -9,7 +9,7 @@ Unlike virtual-DOM frameworks that serialize virtual node trees, Aurelia 2 opera
 ```
                     ┌────────────────────────────┐
                     │ Incoming HTTP Request      │
-                    │ (Hono / Node.js runtime)   │
+                    │ (Node.js / Edge Runtime)   │
                     └─────────────┬──────────────┘
                                   │
                                   ▼
@@ -73,7 +73,7 @@ export async function renderToString(
   au.register(Registration.singleton(ITemplateElementFactory, SsrTemplateElementFactory));
   au.app({
     host,
-    component: typeof component === 'function' ? component : CustomElement.define({ name: 'ssr-app', template: '' }, component as any),
+    component: typeof component === 'function' ? component : CustomElement.define({ name: 'ssr-app', template: '' }, component as Constructable),
   });
 
   await au.start();
@@ -88,7 +88,7 @@ export async function renderToString(
 
 In a client-side SPA, Aurelia's default `TemplateElementFactory` caches parsed `<template>` elements in a module-level dictionary (`markupCache`). In server environments where each incoming HTTP request creates and destroys its own JSDOM document, reusing cached template nodes from a destroyed document causes cross-document TreeWalker failures and `Error: AUR0757 (The compiled template is not aligned with the render instructions)`.
 
-To ensure complete request isolation across requests in long-running Node/Hono server processes, register a request-scoped `SsrTemplateElementFactory`:
+To ensure complete request isolation across requests in long-running server processes, register a request-scoped `SsrTemplateElementFactory`:
 
 ```typescript
 import {
@@ -136,7 +136,7 @@ export class PostPage {
 
   post?: { title: string; content: string };
 
-  activate(data?: { post: { title: string; content: string } }) {
+  constructor(data?: { post: { title: string; content: string } }) {
     if (data?.post) {
       this.post = data.post;
     }
@@ -178,8 +178,12 @@ function getInitialState<T>(): T | undefined {
   }
 }
 
+interface AppInitialState {
+  post?: { title: string; content: string };
+}
+
 async function bootstrap() {
-  const initialState = getInitialState<{ post?: any }>();
+  const initialState = getInitialState<AppInitialState>();
   const host = document.querySelector<HTMLElement>('#app')!;
 
   const au = new Aurelia();
@@ -198,40 +202,64 @@ bootstrap().catch(console.error);
 
 ---
 
-## 4. Fullstack Integration with Hono
+## 4. Server Integration with Standard Web APIs
 
-Hono pairs cleanly with Aurelia SSR using middleware or custom renderers:
+Aurelia SSR works with standard Web APIs (`Request` / `Response`), making it agnostic to any backend server runtime (Node.js `http`, Cloudflare Workers, Fastify, Express, etc.):
 
 ```typescript
-import { Hono } from 'hono';
 import { HomePage } from './pages/home';
 import { renderToString, serializeState } from './ssr-engine';
 
-const app = new Hono();
+export async function handleRequest(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  if (url.pathname === '/') {
+    const data = await HomePage.loader();
+    const bodyHtml = await renderToString(HomePage, data);
+    const stateScript = serializeState(data);
 
-app.get('/', async (c) => {
-  const data = await HomePage.loader();
-  const bodyHtml = await renderToString(HomePage, data);
-  const stateScript = serializeState(data);
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Aurelia 2 SSR</title>
+  </head>
+  <body>
+    <div id="app">${bodyHtml}</div>
+    ${stateScript}
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>`;
 
-  return c.html(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <title>Aurelia 2 SSR on Hono</title>
-      </head>
-      <body>
-        <div id="app">${bodyHtml}</div>
-        ${stateScript}
-        <script type="module" src="/src/main.ts"></script>
-      </body>
-    </html>
-  `);
-});
+    return new Response(html, {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+  }
 
-export default app;
+  return new Response('Not Found', { status: 404 });
+}
 ```
+
+---
+
+## 5. Package Architecture & Subpath Exports
+
+To prevent server-only dependencies like `jsdom` from leaking into client hydration bundles, SSR packages should separate server and client entry points via subpath exports in `package.json`:
+
+```json
+{
+  "name": "aurelia-ssr-package",
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.js",
+    "./server": "./dist/server.js",
+    "./client": "./dist/client.js"
+  }
+}
+```
+
+- **`./server`**: Server-only renderer, HTML document builder, and virtual DOM environment.
+- **`./client`**: Client-side hydration (`Aurelia.enhance` / state restoration) with zero server/DOM-mocking footprint.
+- **`sideEffects: false`**: Allows bundlers (Vite/Rolldown, esbuild, webpack) to eliminate unreferenced code completely.
 
 ---
 
@@ -252,4 +280,3 @@ export default app;
 - [Aurelia 2 Enhancement and Startup](https://docs.aurelia.io/getting-to-know-aurelia/startup-and-enhancement/enhance)
 - [Aurelia Component Templates](templates.md)
 - [Aurelia Architecture and Reactivity](reactivity.md)
-- [Hono Web Framework](https://hono.dev/)
